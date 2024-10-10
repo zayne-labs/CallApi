@@ -1,9 +1,5 @@
 {
 	"extends": "./tsconfig.json",
 
-	"compilerOptions": {
-		"composite": true
-	},
-	"include": ["src/**/*.ts", "*", "website/**/*"],
-	"exclude": ["node_modules"]
+	"include": ["**/*"]
 }

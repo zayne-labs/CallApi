@@ -1,5 +1,16 @@
 # @zayne-labs/callapi
 
+## 1.0.0-rc-20240920162427
+
+### Major Changes
+
+-  [BREAKING]: removal of the `cancelRedundantRequest` option, replaced with the more robust `dedupeStrategy`
+-  Add params feature
+   Add dedupe feature
+   Upgrade caching heuristics
+   Deprecate cancelRedundantRequests option
+   Stabilize current API
+
 ## 0.8.0
 
 ### Minor Changes

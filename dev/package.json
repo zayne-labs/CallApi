@@ -1,0 +1,22 @@
+{
+	"name": "dev",
+	"private": true,
+	"version": "0.0.0",
+	"type": "module",
+	"scripts": {
+		"build": "tsc && vite build",
+		"dev:client": "vite",
+		"dev:server": "tsx --watch src/server.ts --clear-screen=false",
+		"preview": "vite preview"
+	},
+	"dependencies": {
+		"@zayne-labs/callapi": "workspace:*"
+	},
+	"devDependencies": {
+		"@types/node": "^22.7.5",
+		"@zayne-labs/tsconfig": "catalog:",
+		"tsx": "^4.19.1",
+		"typescript": "catalog:",
+		"vite": "^5.4.8"
+	}
+}

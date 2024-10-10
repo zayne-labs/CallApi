@@ -1,90 +1,19 @@
 {
 	"name": "@zayne-labs/callapi",
-	"version": "0.8.0",
 	"type": "module",
+	"version": "1.0.0-rc.10",
+	"packageManager": "pnpm@9.12.0",
 	"description": "A lightweight wrapper over fetch with quality of life improvements like built-in request cancellation, retries, interceptors and more",
+	"author": "Ryan Zayne",
+	"license": "MIT",
+	"homepage": "https://github.com/zayne-labs/call-api#readme",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/zayne-labs/call-api.git"
 	},
-	"homepage": "https://github.com/zayne-labs/call-api#readme",
 	"bugs": {
 		"url": "https://github.com/zayne-labs/call-api/issues"
 	},
-	"license": "MIT",
-	"author": "Ryan Zayne",
-	"main": "./dist/esm/index.js",
-	"module": "./dist/esm/index.js",
-	"types": "./dist/esm/index.d.ts",
-	"scripts": {
-		"prepare": "husky",
-		"test:check-types": "tsc --pretty --incremental -p tsconfig.json",
-		"test:format": "prettier --cache --write .",
-		"test:lint": "eslint src/**/*.ts --cache --max-warnings 0 --report-unused-disable-directives",
-		"test:size": "size-limit",
-		"test:publint": "publint --strict .",
-		"test:attw": "attw --pack . --exclude-entrypoints utils",
-		"test:release": "pkg-pr-new publish",
-		"build": "tsup",
-		"build:dev": "concurrently --prefix-colors \"yellow.bold,#7da4f8.bold,magenta\"   --names PUBLINT,TSUP,ATTW   'pnpm:test:publint' \"pnpm build --watch\" 'pnpm:test:attw'",
-		"version-package": "changeset version",
-		"release": "changeset publish"
-	},
-	"exports": {
-		".": {
-			"import": "./dist/esm/index.js",
-			"require": "./dist/cjs/index.cjs"
-		},
-		"./utils": {
-			"import": "./dist/esm/utils/index.js",
-			"require": "./dist/cjs/utils/index.cjs"
-		}
-	},
-	"devDependencies": {
-		"@arethetypeswrong/cli": "0.16.1",
-		"@changesets/cli": "2.27.8",
-		"@eslint/js": "9.10.0",
-		"@size-limit/esbuild-why": "11.1.4",
-		"@size-limit/preset-small-lib": "11.1.4",
-		"@stylistic/eslint-plugin": "2.7.2",
-		"@total-typescript/ts-reset": "0.6.1",
-		"@types/eslint": "9.6.1",
-		"@zayne-labs/tsconfig": "0.1.1",
-		"concurrently": "8.2.2",
-		"eslint": "9.10.0",
-		"eslint-import-resolver-typescript": "3.6.3",
-		"eslint-plugin-import-x": "4.2.1",
-		"eslint-plugin-jsdoc": "50.2.2",
-		"eslint-plugin-perfectionist": "3.5.0",
-		"eslint-plugin-unicorn": "55.0.0",
-		"eslint-typegen": "0.3.1",
-		"globals": "15.9.0",
-		"husky": "9.1.5",
-		"lint-staged": "15.2.10",
-		"pkg-pr-new": "0.0.24",
-		"prettier": "3.3.3",
-		"publint": "0.2.10",
-		"size-limit": "11.1.4",
-		"terser": "5.31.6",
-		"tsup": "8.2.4",
-		"typescript": "5.5.4",
-		"typescript-eslint": "8.4.0"
-	},
-	"publishConfig": {
-		"access": "public",
-		"registry": "https://registry.npmjs.org/",
-		"provenance": true
-	},
-	"files": [
-		"dist"
-	],
-	"size-limit": [
-		{
-			"path": "./src/index.ts",
-			"limit": "2 kb"
-		}
-	],
-	"sideEffects": false,
 	"keywords": [
 		"fetch",
 		"api",
@@ -94,8 +23,76 @@
 		"retry",
 		"interceptor"
 	],
-	"packageManager": "pnpm@9.9.0",
+	"sideEffects": false,
+	"exports": {
+		".": "./dist/esm/index.js",
+		"./utils": "./dist/esm/utils/index.js",
+		"./legacy": "./dist/cjs/index.cjs",
+		"./legacy/utils": "./dist/cjs/utils/index.cjs"
+	},
+	"main": "./dist/esm/index.js",
+	"module": "./dist/esm/index.js",
+	"types": "./dist/esm/index.d.ts",
+	"files": [
+		"dist"
+	],
 	"engines": {
 		"node": ">=18.17.x"
-	}
+	},
+	"scripts": {
+		"build": "tsup",
+		"build:dev": "cross-env NODE_ENV=development tsup",
+		"build:test": "concurrently --prefix-colors \"yellow.bold,#7da4f8.bold,magenta\" --names PUBLINT,TSUP,ATTW 'pnpm:lint:publint' 'pnpm:build:dev' 'pnpm:lint:attw'",
+		"inspect:eslint-config": "pnpx @eslint/config-inspector@latest --config eslint.config.js",
+		"lint:attw": "attw --pack . --ignore-rules=cjs-resolves-to-esm",
+		"lint:check-types": "tsc --pretty --incremental -p tsconfig.json",
+		"lint:commitlint": "commitlint --edit",
+		"lint:eslint": "eslint src/**/*.ts --cache --max-warnings 0 --report-unused-disable-directives",
+		"lint:format": "prettier --cache --write .",
+		"lint:packages": "pnpm dedupe --check",
+		"lint:publint": "publint --strict .",
+		"lint:size": "size-limit",
+		"prepare": "husky",
+		"release": "changeset publish",
+		"release:rc": "pnpm build && changeset publish --tag rc",
+		"test:release": "pkg-pr-new publish",
+		"version-package": "changeset version"
+	},
+	"devDependencies": {
+		"@arethetypeswrong/cli": "0.16.4",
+		"@changesets/cli": "2.27.9",
+		"@size-limit/esbuild-why": "11.1.6",
+		"@size-limit/preset-small-lib": "11.1.6",
+		"@total-typescript/ts-reset": "0.6.1",
+		"@types/node": "^22.7.4",
+		"@zayne-labs/eslint-config": "0.1.5",
+		"@zayne-labs/tsconfig": "0.1.1",
+		"concurrently": "9.0.1",
+		"cross-env": "^7.0.3",
+		"eslint": "9.12.0",
+		"husky": "9.1.6",
+		"lint-staged": "15.2.10",
+		"pkg-pr-new": "0.0.29",
+		"prettier": "3.3.3",
+		"publint": "0.2.11",
+		"size-limit": "11.1.6",
+		"terser": "5.34.1",
+		"tsup": "8.3.0",
+		"typescript": "5.6.2"
+	},
+	"publishConfig": {
+		"access": "public",
+		"registry": "https://registry.npmjs.org/",
+		"provenance": false
+	},
+	"size-limit": [
+		{
+			"path": "./src/index.ts",
+			"limit": "2.5 kb"
+		},
+		{
+			"path": "./src/utils/index.ts",
+			"limit": "500 b"
+		}
+	]
 }

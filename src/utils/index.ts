@@ -1,1 +1,1 @@
-export { HTTPError, isHTTPError, isHTTPErrorInstance, toQueryString } from "./utils";
+export { HTTPError, isHTTPError, isHTTPErrorInstance, toQueryString } from "./common";

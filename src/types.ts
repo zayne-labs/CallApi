@@ -1,23 +1,36 @@
-/* eslint-disable @typescript-eslint/no-empty-object-type */
-/* eslint-disable @typescript-eslint/consistent-type-definitions */
-import type { AnyNumber, AnyString, BaseMime, Prettify, ResponseHeader } from "./utils/type-helpers";
-import type { HTTPError, fetchSpecificKeys, handleResponseType } from "./utils/utils";
+import type { fetchSpecificKeys, handleResponseType } from "./utils/common";
+
+/* eslint-disable ts-eslint/no-empty-object-type */
+/* eslint-disable ts-eslint/consistent-type-definitions */
+import type {
+	AnyNumber,
+	AnyString,
+	Awaitable,
+	CommonContentTypes,
+	CommonRequestHeaders,
+	Prettify,
+	UnmaskType,
+} from "./utils/type-helpers";
 
 // prettier-ignore
-export interface FetchConfig<
+export interface CallApiConfig<
 	TData = unknown,
 	TErrorData = unknown,
-	TResultMode extends ResultModeUnion = "all",
+	TResultMode extends ResultModeUnion = ResultModeUnion,
 > extends Omit<RequestInit, "body" | "headers" | "method">, ExtraOptions<TData, TErrorData, TResultMode> {}
 
-export type BaseConfig<
-	TBaseData = unknown,
-	TBaseErrorData = unknown,
-	TBaseResultMode extends ResultModeUnion = "all",
-> = FetchConfig<TBaseData, TBaseErrorData, TBaseResultMode>;
+// prettier-ignore
+export interface BaseCallApiConfig<
+	TData = unknown,
+	TErrorData = unknown,
+	TResultMode extends ResultModeUnion = ResultModeUnion,
+> extends Omit<RequestInit, "body" | "headers" | "method">, BaseExtraOptions<TData, TErrorData, TResultMode> {}
 
-export interface $RequestOptions extends Pick<FetchConfig, (typeof fetchSpecificKeys)[number]> {}
-export interface $BaseRequestOptions extends Omit<$RequestOptions, "body"> {}
+export interface RequestOptions extends Pick<CallApiConfig, (typeof fetchSpecificKeys)[number]> {}
+
+export type InterceptorUnion = UnmaskType<
+	"onError" | "onRequest" | "onRequestError" | "onResponse" | "onResponseError"
+>;
 
 export interface ExtraOptions<
 	TData = unknown,
@@ -55,14 +68,20 @@ export interface ExtraOptions<
 	/**
 	 * @description If true, cancels previous unfinished requests to the same URL.
 	 * @default true
+	 * @deprecated use dedupeStrategy option instead
 	 */
 	cancelRedundantRequests?: boolean;
 
 	/**
-	 * @description Whether to clone the response, so response.json and the like can used in the interceptors.
-	 * @default false
+	 * @description Defines the deduplication strategy for the request, can be set to "none" | "defer" | "cancel".
+	 * - If set to "none", deduplication is disabled.
+	 *
+	 * - If set to "cancel"(default), the previous pending request with the same request key will be cancelled and lets the new request through.
+	 *
+	 * - If set to "defer", all new request with the same request key will be share the same response, until the previous one is completed.
+	 * @default "cancel"
 	 */
-	cloneResponse?: boolean;
+	dedupeStrategy?: "cancel" | "defer" | "none";
 
 	/**
 	 * @description Default error message to use if none is provided from a response.
@@ -73,7 +92,18 @@ export interface ExtraOptions<
 	/**
 	 * @description Headers to be used in the request.
 	 */
-	headers?: Record<"Content-Type", BaseMime> | Record<ResponseHeader, string> | RequestInit["headers"];
+	headers?:
+		| Record<"Content-Type", CommonContentTypes>
+		| Record<CommonRequestHeaders, string>
+		| RequestInit["headers"];
+
+	/**
+	 * @description Defines the mode in which merged interceptors are executed, can be set to "parallel" | "sequential".
+	 * - If set to "parallel", both base and instance interceptors will be executed in parallel.
+	 * - If set to "sequential", the base interceptors will be executed first, and then the instance interceptors will be executed.
+	 * @default "parallel"
+	 */
+	mergedInterceptorsExecutionMode?: "parallel" | "sequential";
 
 	/**
 	 * @description an optional field you can fill with additional information,
@@ -105,47 +135,52 @@ export interface ExtraOptions<
 	 */
 	method?: "DELETE" | "GET" | "PATCH" | "POST" | "PUT" | AnyString;
 
-	// /**
-	//  * @description Defines the deduplication strategy for the request, can be set to "none" | "defer" | "cancel".
-	//  *
-	//  * - If set to "none", deduplication is disabled.
-	//  *
-	//  * - If set to "defer", no new requests to the same URL will be allowed through, until the previous one is completed.
-	//  *
-	//  * - If set to "cancel"(default), the previous pending request to the same URL will be cancelled and lets the new request through.
-	//  * @default "cancel"
-	//  */
-	// dedupeStrategy?: "none" | "defer" | "cancel";
-
 	/**
 	 * @description Interceptor to be called when an error occurs during the fetch request OR when an error response is received from the api
 	 * It is basically a combination of `onRequestError` and `onResponseError` interceptors
 	 */
-	onError?: (errorContext: ErrorContext<TErrorData>) => Promise<void> | void;
+	onError?: (errorContext: ErrorContext<TErrorData>) => Awaitable<void>;
 
-	/** @description Interceptor to be called just before the request is made, allowing for modifications or additional operations. */
-	onRequest?: (requestContext: {
-		options: ExtraOptions;
-		request: $RequestOptions;
-	}) => Promise<void> | void;
+	/**
+	 * @description Interceptor to be called just before the request is made, allowing for modifications or additional operations.
+	 */
+	onRequest?: (requestContext: { options: ExtraOptions; request: RequestOptions }) => Awaitable<void>;
 
-	/** @description Interceptor to be called when an error occurs during the fetch request. */
+	/**
+	 *  @description Interceptor to be called when an error occurs during the fetch request.
+	 */
 	onRequestError?: (requestErrorContext: {
 		error: Error;
 		options: ExtraOptions;
-		request: $RequestOptions;
-	}) => Promise<void> | void;
+		request: RequestOptions;
+	}) => Awaitable<void>;
 
-	/** @description Interceptor to be called when a successful response is received from the api. */
-	onResponse?: (responseContext: ResponseContext<TData>) => Promise<void> | void;
+	/**
+	 * @description Interceptor to be called when a successful response is received from the api.
+	 */
+	onResponse?: (responseContext: ResponseContext<TData>) => Awaitable<void>;
 
-	/** @description Interceptor to be called when an error response is received from the api. */
-	onResponseError?: (responseErrorContext: ResponseErrorContext<TErrorData>) => Promise<void> | void;
+	/**
+	 *  @description Interceptor to be called when an error response is received from the api.
+	 */
+	onResponseError?: (responseErrorContext: ResponseErrorContext<TErrorData>) => Awaitable<void>;
+
+	/**
+	 * @description Params to be appended to the URL (i.e: /:id)
+	 */
+	// eslint-disable-next-line perfectionist/sort-union-types
+	params?: Record<string, boolean | number | string> | Array<boolean | number | string>;
 
 	/**
 	 * @description Query parameters to append to the URL.
 	 */
 	query?: Record<string, boolean | number | string>;
+
+	/**
+	 * @description Custom request key to be used to identify a request in the fetch deduplication strategy.
+	 * @default request url + string formed from the request options
+	 */
+	requestKey?: string;
 
 	/**
 	 * @description Custom function to parse the response string into a object.
@@ -195,11 +230,29 @@ export interface ExtraOptions<
 	retryMethods?: Array<"GET" | "POST" | AnyString>;
 
 	/**
+	 * @description Whether or not to clone the response, so response.json() and the like, can be read again else where.
+	 * @default false
+	 */
+	shouldCloneResponse?: boolean;
+
+	/**
+	 * @description Whether or not to merge the base interceptors with the ones from the instance.
+	 * @default true
+	 */
+	shouldMergeInterceptors?: boolean;
+
+	/**
 	 * If true or the function returns true, throws errors instead of returning them
 	 * The function is passed the error object and can be used to conditionally throw the error
 	 * @default false
 	 */
-	throwOnError?: boolean | ((error?: Error | HTTPError<TErrorData>) => boolean);
+	throwOnError?:
+		| boolean
+		| ((ctx: {
+				error: ErrorContext<TErrorData>["error"];
+				options: ExtraOptions;
+				request: RequestOptions;
+		  }) => boolean);
 
 	/**
 	 * @description Request timeout in milliseconds
@@ -207,33 +260,69 @@ export interface ExtraOptions<
 	timeout?: number;
 }
 
-export type ResponseContext<TData> = Prettify<{
+export interface BaseExtraOptions<
+	TBaseData = unknown,
+	TBaseErrorData = unknown,
+	TBaseResultMode extends ResultModeUnion = ResultModeUnion,
+> extends Omit<ExtraOptions<TBaseData, TBaseErrorData, TBaseResultMode>, "requestKey" | InterceptorUnion> {
+	/* eslint-disable perfectionist/sort-union-types */
+	/**
+	 * @description Interceptor to be called when an error occurs during the fetch request OR when an error response is received from the api
+	 * It is basically a combination of `onRequestError` and `onResponseError` interceptors
+	 */
+	onError?:
+		| Required<ExtraOptions<TBaseData, TBaseErrorData, TBaseResultMode>>["onError"]
+		| Array<Required<ExtraOptions<TBaseData, TBaseErrorData, TBaseResultMode>>["onError"]>;
+
+	/** @description Interceptor to be called just before the request is made, allowing for modifications or additional operations. */
+	onRequest?:
+		| Required<ExtraOptions<TBaseData, TBaseErrorData, TBaseResultMode>>["onRequest"]
+		| Array<Required<ExtraOptions<TBaseData, TBaseErrorData, TBaseResultMode>>["onRequest"]>;
+
+	/** @description Interceptor to be called when an error occurs during the fetch request. */
+	onRequestError?:
+		| Required<ExtraOptions<TBaseData, TBaseErrorData, TBaseResultMode>>["onRequestError"]
+		| Array<Required<ExtraOptions<TBaseData, TBaseErrorData, TBaseResultMode>>["onRequestError"]>;
+
+	/** @description Interceptor to be called when a successful response is received from the api. */
+	onResponse?:
+		| Required<ExtraOptions<TBaseData, TBaseErrorData, TBaseResultMode>>["onResponse"]
+		| Array<Required<ExtraOptions<TBaseData, TBaseErrorData, TBaseResultMode>>["onResponse"]>;
+
+	/** @description Interceptor to be called when an error response is received from the api. */
+	onResponseError?:
+		| Required<ExtraOptions<TBaseData, TBaseErrorData, TBaseResultMode>>["onResponseError"]
+		| Array<Required<ExtraOptions<TBaseData, TBaseErrorData, TBaseResultMode>>["onResponseError"]>;
+}
+
+export type ResponseContext<TData> = UnmaskType<{
 	data: TData;
 	options: ExtraOptions;
-	request: $RequestOptions;
+	request: RequestOptions;
 	response: Response;
 }>;
 
-export type ResponseErrorContext<TErrorData> = Prettify<{
+export type ResponseErrorContext<TErrorData> = UnmaskType<{
 	errorData: TErrorData;
 	options: ExtraOptions;
-	request: $RequestOptions;
+	request: RequestOptions;
 	response: Response;
 }>;
 
-export type ErrorContext<TErrorData> =
+export type ErrorContext<TErrorData> = UnmaskType<
 	| {
-			error: Extract<ErrorObjectUnion, { name: PossibleErrorNames }>;
+			error: Prettify<Extract<ErrorObjectUnion, { name: PossibleErrorNames }>>;
 			options: ExtraOptions;
-			request: $RequestOptions;
+			request: RequestOptions;
 			response: null;
 	  }
 	| {
 			error: Extract<ErrorObjectUnion<TErrorData>, { name: "HTTPError" }>;
 			options: ExtraOptions;
-			request: $RequestOptions;
+			request: RequestOptions;
 			response: Response;
-	  };
+	  }
+>;
 
 type ApiSuccessVariant<TData> = {
 	data: TData;
@@ -241,11 +330,9 @@ type ApiSuccessVariant<TData> = {
 	response: Response;
 };
 
-type PossibleErrorNames = {
-	_: "AbortError" | "Error" | "SyntaxError" | "TimeoutError" | "TypeError" | "UnknownError";
-}["_"];
+export type PossibleErrorNames = "AbortError" | "Error" | "SyntaxError" | "TimeoutError" | "TypeError";
 
-type ErrorObjectUnion<TErrorData = unknown> =
+export type ErrorObjectUnion<TErrorData = unknown> =
 	| {
 			errorData: Error;
 			message: string;
@@ -269,26 +356,18 @@ export type ApiErrorVariant<TErrorData> =
 			response: Response;
 	  };
 
-type ResultModeMap<TData = unknown, TErrorData = unknown> = {
+export type ResultModeMap<TData = unknown, TErrorData = unknown> = {
 	all: ApiErrorVariant<TErrorData> | ApiSuccessVariant<TData>;
 	onlyError: ApiErrorVariant<TErrorData>["error"];
 	onlyResponse: Response;
 	onlySuccess: ApiSuccessVariant<TData>["data"];
 };
 
-// == Using this double Immediately Indexed Mapped type to get a union of the keys of the object while still showing the full type signature on hover
-export type ResultModeUnion = {
-	_: { [Key in keyof ResultModeMap]: Key }[keyof ResultModeMap] | undefined;
-}["_"];
+export type ResultModeUnion = UnmaskType<
+	{ [Key in keyof ResultModeMap]: Key }[keyof ResultModeMap] | undefined
+>;
 
 export type GetCallApiResult<TData, TErrorData, TResultMode> =
 	TResultMode extends NonNullable<ResultModeUnion>
 		? ResultModeMap<TData, TErrorData>[TResultMode]
 		: ResultModeMap<TData, TErrorData>["all"];
-
-export type PossibleErrorObject =
-	| {
-			message?: string;
-			name?: PossibleErrorNames;
-	  }
-	| undefined;

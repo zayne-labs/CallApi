@@ -2,10 +2,6 @@ name: Changeset - Release and Publish
 on:
    push:
       branches: main
-   #  workflow_run:
-   #     workflows: [Lint and Type]
-   #     branches: main
-   #     types: completed
 
 permissions:
    contents: write
@@ -18,7 +14,7 @@ jobs:
       timeout-minutes: 15
       strategy:
          matrix:
-            node-version: [20.x]
+            node-version: [lts/*]
 
       # if: ${{ github.event.workflow_run.conclusion == 'success' }}
       steps:
@@ -32,9 +28,9 @@ jobs:
          - name: Setup pnpm
            uses: pnpm/action-setup@v4
            with:
-              version: 9.9.0
+              version: 9.12.0
 
-         - name: Setup Node.js 20.x
+         - name: Setup Node.js
            uses: actions/setup-node@1e60f620b9541d16bece96c5465dc8ee9832be0b # v4
            with:
               node-version: ${{ matrix.node-version }}
@@ -55,14 +51,3 @@ jobs:
            env:
               GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-
-   #  on--workflow-failure:
-   #     runs-on: ubuntu-latest
-   #     timeout-minutes: 15
-
-   #     if: ${{ github.event.workflow_run.conclusion == 'failure' }}
-   #     steps:
-   #        - run: |
-   #             echo "Triggering Workflow: ${{ github.event_name }} failed woefully"
-   #             echo "Workflow run conclusion: ${{ github.event.workflow_run.conclusion }}"
-   #             echo "Workflow run status: ${{ github.event.workflow_run.status }}"

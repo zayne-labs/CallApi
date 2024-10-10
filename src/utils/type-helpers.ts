@@ -3,13 +3,18 @@
 export type AnyString = string & { placeholder?: never };
 export type AnyNumber = number & { placeholder?: never };
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable ts-eslint/no-explicit-any */
 // == `Any` is required here so that one can pass custom function type without type errors
-export type AnyFunction = (...args: any[]) => any;
+export type AnyFunction<TResult = any> = (...args: any[]) => TResult;
 
-export type Prettify<TObject> = { [Key in keyof TObject]: TObject[Key] } & NonNullable<unknown>;
+export type Prettify<TObject> = NonNullable<unknown> & { [Key in keyof TObject]: TObject[Key] };
 
-export type ResponseHeader =
+// == Using this Immediately Indexed Mapped type helper to help show computed type of anything passed to it instead of just the type name
+export type UnmaskType<TValue> = { _: TValue }["_"];
+
+export type Awaitable<TValue> = UnmaskType<Promise<TValue> | TValue>;
+
+export type CommonRequestHeaders =
 	| "Access-Control-Allow-Credentials"
 	| "Access-Control-Allow-Headers"
 	| "Access-Control-Allow-Methods"
@@ -79,7 +84,7 @@ export type ResponseHeader =
 	| "X-Robots-Tag"
 	| "X-XSS-Protection";
 
-export type BaseMime =
+export type CommonContentTypes =
 	| "application/epub+zip"
 	| "application/gzip"
 	| "application/json"
