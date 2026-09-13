@@ -1,5 +1,11 @@
 # @zayne-labs/callapi
 
+## 1.15.1
+
+### Patch Changes
+
+- b4d4910: refactor(callapi): remove fragment handling
+
 ## 1.15.0
 
 ### Minor Changes
